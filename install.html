@@ -59,13 +59,13 @@
   </style>
 </head>
 <body>
-  <div class="container" id="inputSection">
+  <div class="container" id="inputSection" style="display:none;">
     <div class="title">Enter Your Journal Code</div>
     <input type="text" id="codeInput" placeholder="e.g. abc123" />
     <button onclick="updateCode()">OK</button>
   </div>
 
-  <div class="container" id="installSection" style="display: none;">
+  <div class="container" id="installSection" style="display:none;">
     <div class="title">Ready to Install for Code: <span id="codeDisplay"></span></div>
     <button class="install-button" onclick="installPWA()">Install App</button>
   </div>
@@ -73,7 +73,7 @@
   <script>
     let deferredPrompt;
     const params = new URLSearchParams(window.location.search);
-    const codeFromURL = params.get("code");
+    let code = params.get("code");
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -86,7 +86,8 @@
 
       const newUrl = `${location.pathname}?code=${encodeURIComponent(input)}`;
       history.replaceState({}, "", newUrl);
-      showInstall(input);
+      code = input;
+      showInstall(code);
     }
 
     function showInstall(journalCode) {
@@ -121,34 +122,13 @@
     }
 
     function installPWA() {
-  if (!deferredPrompt) {
-    alert("Install not available yet. Try refreshing the page.");
-    return;
-  }
-  deferredPrompt.prompt();
-  deferredPrompt.userChoice.then((choiceResult) => {
-    if (choiceResult.outcome === 'accepted') {
-      // Show loading message
-      document.body.innerHTML = `
-        <div style="
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          height:100vh;
-          background:#f0f8ff;
-          font-family:sans-serif;
-          font-size:1.8rem;
-          color:#007BFF;
-          ">
-          Loading...
-        </div>`;
-
-      // Wait 2 seconds then try redirect
-      setTimeout(() => {
-        try {
-          window.location.href = `https://campbell-journal.vercel.app/?code=${encodeURIComponent(codeFromURL)}`;
-        } catch {
-          // Redirect blocked? Show restart message
+      if (!deferredPrompt) {
+        alert("Install not available yet. Try refreshing the page.");
+        return;
+      }
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
           document.body.innerHTML = `
             <div style="
               display:flex;
@@ -159,18 +139,49 @@
               font-family:sans-serif;
               font-size:1.8rem;
               color:#007BFF;
-              text-align:center;
-              padding: 1rem;
               ">
-              Restart The App
+              Loading...
             </div>`;
+
+          setTimeout(() => {
+            try {
+              window.location.href = `https://campbell-journal.vercel.app/?code=${encodeURIComponent(code)}`;
+            } catch {
+              document.body.innerHTML = `
+                <div style="
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                  height:100vh;
+                  background:#f0f8ff;
+                  font-family:sans-serif;
+                  font-size:1.8rem;
+                  color:#007BFF;
+                  text-align:center;
+                  padding: 1rem;
+                  ">
+                  Restart The App
+                </div>`;
+            }
+          }, 2000);
+        } else {
+          deferredPrompt = null;
         }
-      }, 2000);
-    } else {
-      deferredPrompt = null;
+      });
     }
-  });
-}
+
+    // On load, decide what to show:
+    if (code) {
+      showInstall(code);
+    } else {
+      document.getElementById("inputSection").style.display = "block";
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .catch(err => console.warn('Service Worker registration failed:', err));
+    }
   </script>
 </body>
 </html>
