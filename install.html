@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Journal Installer</title>
+  <title>Install Journal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#007BFF" />
   <style>
     body {
       background: white;
@@ -14,7 +16,6 @@
       min-height: 100vh;
       margin: 0;
     }
-
     .container {
       padding: 2rem;
       border-radius: 1.5rem;
@@ -23,7 +24,6 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       text-align: center;
     }
-
     input {
       padding: 0.5rem 1rem;
       border: 2px solid #007BFF;
@@ -34,7 +34,6 @@
       background: white;
       color: #000;
     }
-
     button {
       padding: 0.5rem 1.2rem;
       background-color: #007BFF;
@@ -45,17 +44,14 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-
     button:hover {
       background-color: #0056b3;
     }
-
     .install-button {
       font-size: 2rem;
       padding: 1rem 2rem;
       margin-top: 2rem;
     }
-
     .title {
       font-size: 1.5rem;
       margin-bottom: 1rem;
@@ -63,33 +59,89 @@
   </style>
 </head>
 <body>
-  <div class="container" id="form-section">
+  <div class="container" id="inputSection">
     <div class="title">Enter Your Journal Code</div>
     <input type="text" id="codeInput" placeholder="e.g. abc123" />
-    <button onclick="go()">OK</button>
+    <button onclick="updateCode()">OK</button>
   </div>
 
-  <div class="container" id="install-section" style="display: none;">
+  <div class="container" id="installSection" style="display: none;">
     <div class="title">Ready to Install for Code: <span id="codeDisplay"></span></div>
-    <button class="install-button">Install</button>
+    <button class="install-button" onclick="installPWA()">Install App</button>
   </div>
 
   <script>
-    function go() {
-      const code = document.getElementById("codeInput").value.trim();
-      if (code) {
-        window.location.search = '?code=' + encodeURIComponent(code);
-      }
-    }
-
-    // Check for ?code= in URL
+    let deferredPrompt;
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
 
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    // Update the URL with code (no redirect)
+    function updateCode() {
+      const input = document.getElementById("codeInput").value.trim();
+      if (!input) return;
+
+      const newUrl = `${location.pathname}?code=${encodeURIComponent(input)}`;
+      history.replaceState({}, "", newUrl);
+      showInstall(input);
+    }
+
+    // Set up the UI for installing with the given code
+    function showInstall(journalCode) {
+      document.getElementById("inputSection").style.display = "none";
+      document.getElementById("installSection").style.display = "block";
+      document.getElementById("codeDisplay").textContent = journalCode;
+
+      // Dynamically set the manifest with custom start_url
+      const manifest = {
+        name: "My Journal",
+        short_name: "Journal",
+        start_url: `index.html?code=${encodeURIComponent(journalCode)}`,
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#007BFF",
+        icons: [
+          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "icon-512.png", sizes: "512x512", type: "image/png" }
+        ]
+      };
+
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(blob);
+
+      const existing = document.querySelector('link[rel="manifest"]');
+      if (existing) existing.remove();
+
+      const link = document.createElement('link');
+      link.rel = "manifest";
+      link.href = manifestURL;
+      document.head.appendChild(link);
+    }
+
+    function installPWA() {
+      if (!deferredPrompt) {
+        alert("Install not available yet. Try refreshing.");
+        return;
+      }
+
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        deferredPrompt = null;
+      });
+    }
+
+    // On load: show install section if code is in URL
     if (code) {
-      document.getElementById("form-section").style.display = "none";
-      document.getElementById("install-section").style.display = "block";
-      document.getElementById("codeDisplay").innerText = code;
+      showInstall(code);
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
     }
   </script>
 </body>
