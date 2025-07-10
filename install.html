@@ -121,26 +121,56 @@
     }
 
     function installPWA() {
-      if (!deferredPrompt) {
-        alert("Install not available yet. Try refreshing the page.");
-        return;
-      }
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(() => {
-        deferredPrompt = null;
-      });
-    }
+  if (!deferredPrompt) {
+    alert("Install not available yet. Try refreshing the page.");
+    return;
+  }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then((choiceResult) => {
+    if (choiceResult.outcome === 'accepted') {
+      // Show loading message
+      document.body.innerHTML = `
+        <div style="
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          height:100vh;
+          background:#f0f8ff;
+          font-family:sans-serif;
+          font-size:1.8rem;
+          color:#007BFF;
+          ">
+          Loading...
+        </div>`;
 
-    // On page load, if code is in URL, show install UI immediately
-    if (codeFromURL) {
-      showInstall(codeFromURL);
+      // Wait 2 seconds then try redirect
+      setTimeout(() => {
+        try {
+          window.location.href = `https://campbell-journal.vercel.app/?code=${encodeURIComponent(codeFromURL)}`;
+        } catch {
+          // Redirect blocked? Show restart message
+          document.body.innerHTML = `
+            <div style="
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              height:100vh;
+              background:#f0f8ff;
+              font-family:sans-serif;
+              font-size:1.8rem;
+              color:#007BFF;
+              text-align:center;
+              padding: 1rem;
+              ">
+              Restart The App
+            </div>`;
+        }
+      }, 2000);
+    } else {
+      deferredPrompt = null;
     }
-
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .catch(err => console.warn('Service Worker registration failed:', err));
-    }
+  });
+}
   </script>
 </body>
 </html>
