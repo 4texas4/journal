@@ -73,14 +73,13 @@
   <script>
     let deferredPrompt;
     const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
+    const codeFromURL = params.get("code");
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
     });
 
-    // Update the URL with code (no redirect)
     function updateCode() {
       const input = document.getElementById("codeInput").value.trim();
       if (!input) return;
@@ -90,23 +89,22 @@
       showInstall(input);
     }
 
-    // Set up the UI for installing with the given code
     function showInstall(journalCode) {
       document.getElementById("inputSection").style.display = "none";
       document.getElementById("installSection").style.display = "block";
       document.getElementById("codeDisplay").textContent = journalCode;
 
-      // Dynamically set the manifest with custom start_url
+      const origin = location.origin;
       const manifest = {
         name: "My Journal",
         short_name: "Journal",
-        start_url: `index.html?code=${encodeURIComponent(journalCode)}`,
+        start_url: `${origin}/index.html?code=${encodeURIComponent(journalCode)}`,
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#007BFF",
         icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" }
+          { src: `${origin}/icon-192.png`, sizes: "192x192", type: "image/png" },
+          { src: `${origin}/icon-512.png`, sizes: "512x512", type: "image/png" }
         ]
       };
 
@@ -124,24 +122,24 @@
 
     function installPWA() {
       if (!deferredPrompt) {
-        alert("Install not available yet. Try refreshing.");
+        alert("Install not available yet. Try refreshing the page.");
         return;
       }
-
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then(() => {
         deferredPrompt = null;
       });
     }
 
-    // On load: show install section if code is in URL
-    if (code) {
-      showInstall(code);
+    // On page load, if code is in URL, show install UI immediately
+    if (codeFromURL) {
+      showInstall(codeFromURL);
     }
 
     // Register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js');
+      navigator.serviceWorker.register('service-worker.js')
+        .catch(err => console.warn('Service Worker registration failed:', err));
     }
   </script>
 </body>
