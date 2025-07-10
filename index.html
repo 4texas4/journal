@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Journal App</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f5f7fa;
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #app, #login-box {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    width: 360px;
+    max-width: 100%;
+    text-align: center;
+  }
+  input, textarea, button {
+    font-family: 'Inter', sans-serif;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    padding: 10px 14px;
+    font-size: 1rem;
+    width: 100%;
+    margin-top: 15px;
+    box-sizing: border-box;
+    transition: border-color 0.25s;
+  }
+  textarea {
+    min-height: 150px;
+    resize: vertical;
+  }
+  button {
+    background: #007bff;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+  }
+  button:hover:not(:disabled) {
+    background: #0056b3;
+  }
+  button:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+  }
+  #userNameDisplay {
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 20px;
+  }
+  #message {
+    margin-top: 10px;
+    color: #dc3545;
+    min-height: 20px;
+  }
+
+  /* Custom dropdown container */
+  .dropdown {
+    position: relative;
+    margin-top: 15px;
+    user-select: none;
+  }
+
+  /* Dropdown button */
+  .dropdown-button {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px 14px;
+    background-color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    text-align: left;
+  }
+  .dropdown-button.open {
+    border-color: #007bff;
+    box-shadow: 0 0 5px #007bff;
+  }
+
+  /* Dropdown list */
+  .dropdown-list {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    width: 100%;
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 10;
+    display: none;
+  }
+  .dropdown-list.open {
+    display: block;
+  }
+
+  /* Dropdown items */
+.dropdown-item {
+  padding: 8px 14px;
+  cursor: pointer;
+  background-color: white;
+  color: black;
+}
+.dropdown-item:hover {
+  background: #e6f4ea;
+}
+
+/* Green items (have data) */
+.dropdown-item.green {
+  background-color: #90EE90; /* light green background */
+  color: black;
+}
+
+/* Selected items */
+.dropdown-item.selected {
+  background: #007bff; /* blue */
+  color: white;
+}
+
+/* Selected AND green items */
+.dropdown-item.green.selected {
+  background: #007bff; /* keep blue bg */
+  color: white; /* white text overrides green */
+}
+</style>
+</head>
+<body>
+
+<div id="login-box">
+  <h2>Enter Your Code</h2>
+  <input type="text" id="codeInput" placeholder="Enter code..." autocomplete="off" />
+  <button id="loginBtn">Load Journal</button>
+  <div id="message"></div>
+</div>
+
+<div id="app" style="display:none;">
+  <div id="userNameDisplay"></div>
+
+  <div class="dropdown" id="yearDropdown">
+    <div class="dropdown-button" tabindex="0" id="yearButton">Year</div>
+    <div class="dropdown-list" id="yearList"></div>
+  </div>
+
+  <div class="dropdown" id="monthDropdown">
+    <div class="dropdown-button" tabindex="0" id="monthButton">Month</div>
+    <div class="dropdown-list" id="monthList"></div>
+  </div>
+
+  <div class="dropdown" id="dayDropdown">
+    <div class="dropdown-button" tabindex="0" id="dayButton">Day</div>
+    <div class="dropdown-list" id="dayList"></div>
+  </div>
+
+  <textarea id="journalText" placeholder="Write your journal..."></textarea>
+  <button id="saveBtn" disabled>Save</button>
+  <div id="saveMsg" style="margin-top:10px; color:#28a745;"></div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  const supabase = createClient(
+    'https://njftwmvenphecnlvvlii.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qZnR3bXZlbnBoZWNubHZ2bGlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxMTU2ODYsImV4cCI6MjA2NzY5MTY4Nn0.zC-SG4iEHy95rBDwYoWYpPkRl_5qspqwXrfptk2-vcI'
+  );
+
+  const loginBox = document.getElementById('login-box');
+  const codeInput = document.getElementById('codeInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const messageDiv = document.getElementById('message');
+
+  const app = document.getElementById('app');
+  const userNameDisplay = document.getElementById('userNameDisplay');
+
+  // Dropdown elements
+  const yearDropdown = document.getElementById('yearDropdown');
+  const yearButton = document.getElementById('yearButton');
+  const yearList = document.getElementById('yearList');
+
+  const monthDropdown = document.getElementById('monthDropdown');
+  const monthButton = document.getElementById('monthButton');
+  const monthList = document.getElementById('monthList');
+
+  const dayDropdown = document.getElementById('dayDropdown');
+  const dayButton = document.getElementById('dayButton');
+  const dayList = document.getElementById('dayList');
+
+  const journalText = document.getElementById('journalText');
+  const saveBtn = document.getElementById('saveBtn');
+  const saveMsg = document.getElementById('saveMsg');
+
+  let userCode = '';
+  let userName = '';
+  let journalTable = ''; // dynamically set after login
+  let journalEntries = {}; // { 'YYYY-MM-DD': 'text' }
+  let selectedYear = null;
+  let selectedMonth = null;
+  let selectedDay = null;
+  let originalText = '';
+
+  function pad(num) {
+    return num.toString().padStart(2, '0');
+  }
+  function formatDate(year, month, day) {
+    return `${year}-${pad(month)}-${pad(day)}`;
+  }
+  function daysInMonth(year, month) {
+    return new Date(year, month, 0).getDate();
+  }
+
+  // Populate dropdown list with green highlight for entries
+  function populateYearList() {
+    yearList.innerHTML = '';
+    const currentYear = new Date().getFullYear();
+    for(let y = currentYear - 5; y <= currentYear + 5; y++) {
+      const option = document.createElement('div');
+      option.classList.add('dropdown-item');
+      option.textContent = y;
+      option.dataset.value = y;
+      if(Object.keys(journalEntries).some(date => date.startsWith(y + '-'))) {
+        option.classList.add('green');
+      }
+      if(y === selectedYear) option.classList.add('selected');
+      yearList.appendChild(option);
+    }
+  }
+
+  function populateMonthList() {
+    monthList.innerHTML = '';
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    for(let i=0; i<12; i++) {
+      const monthNum = i + 1;
+      const option = document.createElement('div');
+      option.classList.add('dropdown-item');
+      option.textContent = monthNames[i];
+      option.dataset.value = monthNum;
+      // Check if any entry for year-month
+      if(selectedYear && Object.keys(journalEntries).some(date => date.startsWith(`${selectedYear}-${pad(monthNum)}-`))) {
+        option.classList.add('green');
+      }
+      if(monthNum === selectedMonth) option.classList.add('selected');
+      monthList.appendChild(option);
+    }
+  }
+
+  function populateDayList() {
+    dayList.innerHTML = '';
+    if (!selectedYear || !selectedMonth) return;
+    const daysCount = daysInMonth(selectedYear, selectedMonth);
+    for(let d = 1; d <= daysCount; d++) {
+      const option = document.createElement('div');
+      option.classList.add('dropdown-item');
+      option.textContent = d;
+      option.dataset.value = d;
+      if(selectedYear && selectedMonth) {
+        const fullDate = formatDate(selectedYear, selectedMonth, d);
+        if(journalEntries[fullDate] && journalEntries[fullDate].trim().length > 0) {
+          option.classList.add('green');
+        }
+      }
+      if(d === selectedDay) option.classList.add('selected');
+      dayList.appendChild(option);
+    }
+  }
+
+  function closeAllDropdowns() {
+    yearList.classList.remove('open');
+    yearButton.classList.remove('open');
+    monthList.classList.remove('open');
+    monthButton.classList.remove('open');
+    dayList.classList.remove('open');
+    dayButton.classList.remove('open');
+  }
+
+  function openDropdown(list, button) {
+    closeAllDropdowns();
+    list.classList.add('open');
+    button.classList.add('open');
+  }
+
+  // Handle clicks on dropdown buttons
+  yearButton.addEventListener('click', e => {
+    if(yearList.classList.contains('open')) closeAllDropdowns();
+    else openDropdown(yearList, yearButton);
+  });
+  monthButton.addEventListener('click', e => {
+    if(monthList.classList.contains('open')) closeAllDropdowns();
+    else openDropdown(monthList, monthButton);
+  });
+  dayButton.addEventListener('click', e => {
+    if(dayList.classList.contains('open')) closeAllDropdowns();
+    else openDropdown(dayList, dayButton);
+  });
+
+  // Handle clicks on year options
+  yearList.addEventListener('click', e => {
+    if(e.target.classList.contains('dropdown-item')) {
+      const val = parseInt(e.target.dataset.value);
+      if(val !== selectedYear) {
+        selectedYear = val;
+        selectedMonth = null;
+        selectedDay = null;
+        yearButton.textContent = selectedYear;
+        monthButton.textContent = 'Month';
+        dayButton.textContent = 'Day';
+        populateYearList();
+        populateMonthList();
+        dayList.innerHTML = '';
+        loadJournalText();
+      }
+      closeAllDropdowns();
+    }
+  });
+
+  // Handle clicks on month options
+  monthList.addEventListener('click', e => {
+    if(e.target.classList.contains('dropdown-item')) {
+      const val = parseInt(e.target.dataset.value);
+      if(val !== selectedMonth) {
+        selectedMonth = val;
+        selectedDay = null;
+        monthButton.textContent = monthList.querySelector(`[data-value="${val}"]`).textContent;
+        dayButton.textContent = 'Day';
+        populateMonthList();
+        populateDayList();
+        loadJournalText();
+      }
+      closeAllDropdowns();
+    }
+  });
+
+  // Handle clicks on day options
+  dayList.addEventListener('click', e => {
+    if(e.target.classList.contains('dropdown-item')) {
+      const val = parseInt(e.target.dataset.value);
+      if(val !== selectedDay) {
+        selectedDay = val;
+        dayButton.textContent = val;
+        populateDayList();
+        loadJournalText();
+      }
+      closeAllDropdowns();
+    }
+  });
+
+  // Close dropdown if clicked outside
+  document.addEventListener('click', e => {
+    if (!yearDropdown.contains(e.target) &&
+        !monthDropdown.contains(e.target) &&
+        !dayDropdown.contains(e.target)) {
+      closeAllDropdowns();
+    }
+  });
+
+  async function loadJournalEntries() {
+    journalEntries = {};
+    const { data, error } = await supabase
+      .from(journalTable)
+      .select('*');
+
+    if (error) {
+      messageDiv.textContent = 'Error loading journal entries.';
+      return;
+    }
+
+    if (data) {
+      data.forEach(entry => {
+        if(entry.entry_date) {
+          journalEntries[entry.entry_date] = entry.journal || '';
+        }
+      });
+    }
+    populateYearList();
+    populateMonthList();
+    populateDayList();
+  }
+
+  function loadJournalText() {
+    if(!selectedYear || !selectedMonth || !selectedDay) {
+      journalText.value = '';
+      saveBtn.disabled = true;
+      saveMsg.textContent = '';
+      originalText = '';
+      updateTextAreaBg();
+      return;
+    }
+    const date = formatDate(selectedYear, selectedMonth, selectedDay);
+    const text = journalEntries[date] || '';
+    originalText = text;
+    journalText.value = text;
+    updateTextAreaBg();
+    saveBtn.disabled = true;
+    saveMsg.textContent = '';
+  }
+
+  function updateTextAreaBg() {
+    if (document.activeElement === journalText) {
+      if (journalText.value.trim() === '') {
+        journalText.style.backgroundColor = '#ccc'; // grey if empty + focused
+      } else if (journalText.value !== originalText) {
+        journalText.style.backgroundColor = 'yellow'; // yellow if changed
+      } else {
+        journalText.style.backgroundColor = 'white'; // saved and focused
+      }
+    } else {
+      // not focused
+      if (journalText.value.trim() === '') {
+        journalText.style.backgroundColor = '#f0f0f0'; // light grey if empty + not focused
+      } else if (journalText.value !== originalText) {
+        journalText.style.backgroundColor = 'yellow';
+      } else {
+        journalText.style.backgroundColor = 'white';
+      }
+    }
+  }
+
+  async function saveJournal() {
+    if(!selectedYear || !selectedMonth || !selectedDay) return;
+    const date = formatDate(selectedYear, selectedMonth, selectedDay);
+    const text = journalText.value;
+
+    saveBtn.disabled = true;
+    saveMsg.style.color = '#28a745';
+    saveMsg.textContent = 'Saving...';
+
+    const { data, error } = await supabase
+      .from(journalTable)
+      .upsert({ entry_date: date, journal: text }, { onConflict: 'entry_date' });
+
+    if (error) {
+      saveMsg.style.color = 'red';
+      saveMsg.textContent = 'Failed to save.';
+      saveBtn.disabled = false;
+      return;
+    }
+
+    journalEntries[date] = text;
+    originalText = text;
+    saveMsg.style.color = '#28a745';
+    saveMsg.textContent = 'Saved successfully!';
+    saveBtn.disabled = true;
+
+    // Refresh green highlights
+    populateYearList();
+    populateMonthList();
+    populateDayList();
+
+    updateTextAreaBg();
+  }
+
+  // Support ?code= query in URL
+const params = new URLSearchParams(window.location.search);
+const autoCode = params.get('code');
+if (autoCode) {
+  codeInput.value = autoCode;
+  loginBtn.click();
+  history.replaceState({}, document.title, location.pathname); // Clean URL
+}
+
+loginBtn.onclick = async () => {
+
+    const code = codeInput.value.trim().toLowerCase();
+    if (!code) {
+      messageDiv.textContent = 'Please enter a code.';
+      return;
+    }
+    messageDiv.textContent = '';
+    userCode = code;
+
+    // Find user name from journal table
+    const { data, error } = await supabase
+      .from('journal')
+      .select('name, code')
+      .eq('code', userCode)
+      .single();
+
+    if (error || !data) {
+      messageDiv.textContent = 'Code not found.';
+      return;
+    }
+
+    userName = data.name || 'Unknown User';
+journalTable = userName.toLowerCase(); // use name as table name
+
+loginBox.style.display = 'none';
+app.style.display = 'block';
+
+userNameDisplay.textContent = `Journal for ${userName}`;
+
+
+    // Set default date to today
+    const today = new Date();
+    selectedYear = today.getFullYear();
+    selectedMonth = today.getMonth() + 1;
+    selectedDay = today.getDate();
+
+    yearButton.textContent = selectedYear;
+    monthButton.textContent = ['January','February','March','April','May','June','July','August','September','October','November','December'][selectedMonth - 1];
+    dayButton.textContent = selectedDay;
+
+    await loadJournalEntries();
+
+    loadJournalText();
+  };
+
+  journalText.addEventListener('input', () => {
+    updateTextAreaBg();
+    saveBtn.disabled = (journalText.value === originalText);
+  });
+
+  journalText.addEventListener('focus', updateTextAreaBg);
+  journalText.addEventListener('blur', updateTextAreaBg);
+
+  saveBtn.onclick = saveJournal;
+
+</script>
+
+</body>
+</html>
