@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Journal Installer</title>
+  <style>
+    body {
+      background: white;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      padding: 2rem;
+      border-radius: 1.5rem;
+      border: 2px solid #007BFF;
+      background: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    input {
+      padding: 0.5rem 1rem;
+      border: 2px solid #007BFF;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      margin-right: 0.5rem;
+      outline: none;
+      background: white;
+      color: #000;
+    }
+
+    button {
+      padding: 0.5rem 1.2rem;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .install-button {
+      font-size: 2rem;
+      padding: 1rem 2rem;
+      margin-top: 2rem;
+    }
+
+    .title {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="form-section">
+    <div class="title">Enter Your Journal Code</div>
+    <input type="text" id="codeInput" placeholder="e.g. abc123" />
+    <button onclick="go()">OK</button>
+  </div>
+
+  <div class="container" id="install-section" style="display: none;">
+    <div class="title">Ready to Install for Code: <span id="codeDisplay"></span></div>
+    <button class="install-button">Install</button>
+  </div>
+
+  <script>
+    function go() {
+      const code = document.getElementById("codeInput").value.trim();
+      if (code) {
+        window.location.search = '?code=' + encodeURIComponent(code);
+      }
+    }
+
+    // Check for ?code= in URL
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (code) {
+      document.getElementById("form-section").style.display = "none";
+      document.getElementById("install-section").style.display = "block";
+      document.getElementById("codeDisplay").innerText = code;
+    }
+  </script>
+</body>
+</html>
