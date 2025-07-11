@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Install Journal</title>
+  <title>Install Journal App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#007BFF" />
   <style>
@@ -46,23 +46,55 @@
 </head>
 <body>
   <div class="container">
-    <div class="title">Install Journal App</div>
+    <div class="title">Install the Journal App</div>
     <button class="install-button" onclick="installPWA()">Install App</button>
   </div>
 
   <script>
     let deferredPrompt;
 
+    // Listen for install availability
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
     });
+
+    // Create the manifest dynamically for the real app
+    const manifest = {
+      name: "My Journal",
+      short_name: "Journal",
+      start_url: "https://campbell-journal.vercel.app/index.html",
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#007BFF",
+      icons: [
+        {
+          src: "https://campbell-journal.vercel.app/icon-192.png",
+          sizes: "192x192",
+          type: "image/png"
+        },
+        {
+          src: "https://campbell-journal.vercel.app/icon-512.png",
+          sizes: "512x512",
+          type: "image/png"
+        }
+      ]
+    };
+
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const manifestURL = URL.createObjectURL(blob);
+
+    const link = document.createElement('link');
+    link.rel = "manifest";
+    link.href = manifestURL;
+    document.head.appendChild(link);
 
     function installPWA() {
       if (!deferredPrompt) {
         alert("Install not available yet. Try refreshing the page.");
         return;
       }
+
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then((choiceResult) => {
         if (choiceResult.outcome === 'accepted') {
@@ -75,8 +107,7 @@
               background:#f0f8ff;
               font-family:sans-serif;
               font-size:1.8rem;
-              color:#007BFF;
-              ">
+              color:#007BFF;">
               Installing...
             </div>`;
         }
@@ -84,30 +115,7 @@
       });
     }
 
-    // Register manifest
-    const origin = location.origin;
-    const manifest = {
-      name: "My Journal",
-      short_name: "Journal",
-      start_url: "/index.html",
-      display: "standalone",
-      background_color: "#ffffff",
-      theme_color: "#007BFF",
-      icons: [
-        { src: `${origin}/icon-192.png`, sizes: "192x192", type: "image/png" },
-        { src: `${origin}/icon-512.png`, sizes: "512x512", type: "image/png" }
-      ]
-    };
-
-    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-    const manifestURL = URL.createObjectURL(blob);
-
-    const link = document.createElement('link');
-    link.rel = "manifest";
-    link.href = manifestURL;
-    document.head.appendChild(link);
-
-    // Register service worker
+    // (Optional) service worker registration
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js')
         .catch(err => console.warn('Service Worker registration failed:', err));
