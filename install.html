@@ -24,33 +24,19 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       text-align: center;
     }
-    input {
-      padding: 0.5rem 1rem;
-      border: 2px solid #007BFF;
-      border-radius: 0.75rem;
-      font-size: 1rem;
-      margin-right: 0.5rem;
-      outline: none;
-      background: white;
-      color: #000;
-    }
-    button {
-      padding: 0.5rem 1.2rem;
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      border-radius: 0.75rem;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
     .install-button {
       font-size: 2rem;
       padding: 1rem 2rem;
       margin-top: 2rem;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .install-button:hover {
+      background-color: #0056b3;
     }
     .title {
       font-size: 1.5rem;
@@ -59,67 +45,18 @@
   </style>
 </head>
 <body>
-  <div class="container" id="inputSection" style="display:none;">
-    <div class="title">Enter Your Journal Code</div>
-    <input type="text" id="codeInput" placeholder="e.g. abc123" />
-    <button onclick="updateCode()">OK</button>
-  </div>
-
-  <div class="container" id="installSection" style="display:none;">
-    <div class="title">Ready to Install for Code: <span id="codeDisplay"></span></div>
+  <div class="container">
+    <div class="title">Install Journal App</div>
     <button class="install-button" onclick="installPWA()">Install App</button>
   </div>
 
   <script>
     let deferredPrompt;
-    const params = new URLSearchParams(window.location.search);
-    let code = params.get("code");
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
     });
-
-    function updateCode() {
-      const input = document.getElementById("codeInput").value.trim();
-      if (!input) return;
-
-      const newUrl = `${location.pathname}?code=${encodeURIComponent(input)}`;
-      history.replaceState({}, "", newUrl);
-      code = input;
-      showInstall(code);
-    }
-
-    function showInstall(journalCode) {
-      document.getElementById("inputSection").style.display = "none";
-      document.getElementById("installSection").style.display = "block";
-      document.getElementById("codeDisplay").textContent = journalCode;
-
-      const origin = location.origin;
-      const manifest = {
-        name: "My Journal",
-        short_name: "Journal",
-        start_url: `${origin}/index.html?code=${encodeURIComponent(journalCode)}`,
-        display: "standalone",
-        background_color: "#ffffff",
-        theme_color: "#007BFF",
-        icons: [
-          { src: `${origin}/icon-192.png`, sizes: "192x192", type: "image/png" },
-          { src: `${origin}/icon-512.png`, sizes: "512x512", type: "image/png" }
-        ]
-      };
-
-      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-      const manifestURL = URL.createObjectURL(blob);
-
-      const existing = document.querySelector('link[rel="manifest"]');
-      if (existing) existing.remove();
-
-      const link = document.createElement('link');
-      link.rel = "manifest";
-      link.href = manifestURL;
-      document.head.appendChild(link);
-    }
 
     function installPWA() {
       if (!deferredPrompt) {
@@ -140,42 +77,35 @@
               font-size:1.8rem;
               color:#007BFF;
               ">
-              Loading...
+              Installing...
             </div>`;
-
-          setTimeout(() => {
-            try {
-              window.location.href = `https://campbell-journal.vercel.app/?code=${encodeURIComponent(code)}`;
-            } catch {
-              document.body.innerHTML = `
-                <div style="
-                  display:flex;
-                  align-items:center;
-                  justify-content:center;
-                  height:100vh;
-                  background:#f0f8ff;
-                  font-family:sans-serif;
-                  font-size:1.8rem;
-                  color:#007BFF;
-                  text-align:center;
-                  padding: 1rem;
-                  ">
-                  Restart The App
-                </div>`;
-            }
-          }, 2000);
-        } else {
-          deferredPrompt = null;
         }
+        deferredPrompt = null;
       });
     }
 
-    // On load, decide what to show:
-    if (code) {
-      showInstall(code);
-    } else {
-      document.getElementById("inputSection").style.display = "block";
-    }
+    // Register manifest
+    const origin = location.origin;
+    const manifest = {
+      name: "My Journal",
+      short_name: "Journal",
+      start_url: "/index.html",
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#007BFF",
+      icons: [
+        { src: `${origin}/icon-192.png`, sizes: "192x192", type: "image/png" },
+        { src: `${origin}/icon-512.png`, sizes: "512x512", type: "image/png" }
+      ]
+    };
+
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const manifestURL = URL.createObjectURL(blob);
+
+    const link = document.createElement('link');
+    link.rel = "manifest";
+    link.href = manifestURL;
+    document.head.appendChild(link);
 
     // Register service worker
     if ('serviceWorker' in navigator) {
